@@ -6,10 +6,10 @@ import java.util.ArrayList;
 import java.util.Timer;
 import java.util.TimerTask;
 
-public class ChatServer implements Runnable {  
+public class AuctionServer implements Runnable {  
    
    // Array of clients	
-   private ChatServerThread clients[] = new ChatServerThread[50];
+   private AuctionServerThread clients[] = new AuctionServerThread[50];
    private ServerSocket server = null;
    private Thread       thread = null;
    private int clientCount = 0;
@@ -22,7 +22,7 @@ public class ChatServer implements Runnable {
    private int clientID;
    private int currentClient = 0; // keeps count of how many clients on auction
 
-   public ChatServer(int port) {
+   public AuctionServer(int port) {
 	    try {
         System.out.println("Binding to port " + port + ", please wait  ...");
         server = new ServerSocket(port);
@@ -94,7 +94,7 @@ public class ChatServer implements Runnable {
    private void addThread(Socket socket) {
 	   if (clientCount < clients.length){
         System.out.println("Client accepted: " + socket);
-        clients[clientCount] = new ChatServerThread(this, socket);
+        clients[clientCount] = new AuctionServerThread(this, socket);
         try {
 			      clients[clientCount].open();
             clients[clientCount].start();
@@ -186,11 +186,11 @@ public class ChatServer implements Runnable {
   }
 
   public static void main(String args[]) {
-    ChatServer server = null;
+    AuctionServer server = null;
     if (args.length != 1){
-        System.out.println("Usage: java ChatServer port");
+        System.out.println("Usage: java AuctionServer port");
     } else {
-        server = new ChatServer(Integer.parseInt(args[0]));
+        server = new AuctionServer(Integer.parseInt(args[0]));
     }
   }
 
@@ -240,7 +240,7 @@ public class ChatServer implements Runnable {
   public synchronized void remove(int ID) {
 	  int pos = findClient(ID);
     if (pos >= 0) {
-		    ChatServerThread toTerminate = clients[pos];
+		    AuctionServerThread toTerminate = clients[pos];
         System.out.println("Removing client thread " + ID + " at " + pos);
 
         if (pos < clientCount - 1)

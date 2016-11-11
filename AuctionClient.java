@@ -1,16 +1,16 @@
 import java.net.*;
 import java.io.*;
 
-public class ChatClient implements Runnable {
+public class AuctionClient implements Runnable {
 
    private Socket socket              = null;
    private Thread thread              = null;
    private BufferedReader  console   = null;
    private DataOutputStream streamOut = null;
-   private ChatClientThread client    = null;
+   private AuctionClientThread client    = null;
    private String chatName;
 
-   public ChatClient(String serverName, int serverPort, String name) {
+   public AuctionClient(String serverName, int serverPort, String name) {
       System.out.println("Establishing connection. Please wait ...");
 
       this.chatName = name;
@@ -53,7 +53,7 @@ public class ChatClient implements Runnable {
 	console = new BufferedReader(new InputStreamReader(System.in));
       streamOut = new DataOutputStream(socket.getOutputStream());
       if (thread == null) {  
-            client = new ChatClientThread(this, socket);
+            client = new AuctionClientThread(this, socket);
             thread = new Thread(this);
             thread.start();
       }
@@ -74,11 +74,11 @@ public class ChatClient implements Runnable {
 
 
    public static void main(String args[]) {  
-      ChatClient client = null;
+      AuctionClient client = null;
       if (args.length != 3) {
-         System.out.println("Usage: java ChatClient host port name");
+         System.out.println("Usage: java AuctionClient host port name");
       } else {
-         client = new ChatClient(args[0], Integer.parseInt(args[1]), args[2]);
+         client = new AuctionClient(args[0], Integer.parseInt(args[1]), args[2]);
       }
    }
 }

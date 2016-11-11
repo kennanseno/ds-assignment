@@ -2,12 +2,12 @@ import java.net.*;
 import java.io.*;
 
 
-public class ChatClientThread extends Thread {  
+public class AuctionClientThread extends Thread {  
     private Socket           socket   = null;
-    private ChatClient       client   = null;
+    private AuctionClient       client   = null;
     private DataInputStream  streamIn = null;
 
-    public ChatClientThread(ChatClient _client, Socket _socket) {
+    public AuctionClientThread(AuctionClient _client, Socket _socket) {
         client   = _client;
         socket   = _socket;
         open();
