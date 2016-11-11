@@ -1,25 +1,25 @@
 public class AuctionTimerTask {
 	private String text;
-	private int time;
+	private long time;
 	
-    public AuctionTimerTask(String text, int time) {
+    public AuctionTimerTask(String text, long time) {
         this.text = text;
         this.time = time;
     }
 
-    public String text() {
+    public String getText() {
 		return this.text;
 	}
 
-	public void setName(String text) {
+	public void setText(String text) {
 		this.text = text;
 	}
 
-	public int getPrice() {
+	public long getTime() {
 		return this.time;
 	}
 
-	public void setPrice(int time) {
+	public void setTime(long time) {
 		this.time = time;
 	}
     

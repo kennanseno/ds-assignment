@@ -14,22 +14,16 @@ public class ChatServer implements Runnable {
    private Thread       thread = null;
    private int clientCount = 0;
 
-   	private static final long TIMER1 = 60000; //Times for end of the biding and sounds
-	private static final long TIMER2 = 30000;
-	private static final long TIMER3 = 45000;
-	private static final long TIMER4 = 45200;
-	private static final long TIMER5 = 59600;
-	private static final long TIMER6 = 59800;
+    private static final long TIMER1 = 60000; //Times for end of the biding and sounds
 
    private AuctionItem currentAuctionItem = new AuctionItem();
    private ArrayList<AuctionItem> auctionItemList = new ArrayList<AuctionItem>();
+   private ArrayList<AuctionTimerTask> auctionTimerTask = new ArrayList<AuctionTimerTask>();
    private Timer timer;
    private int clientID;
    private int INDEX = 0;
    private int current_client = 0; //very important int which determines if the bid was placed or not
    private static int itemsCount = 2; //keeping the track of the amount of items
-
-
 
    public ChatServer(int port) {
 	    try {
@@ -37,11 +31,24 @@ public class ChatServer implements Runnable {
         server = new ServerSocket(port);
         System.out.println("Server started: " + server.getInetAddress());
         start();
+        addTimerTasks();
         addItems();
         addToAuction(0);
       } catch(IOException ioe) {
         System.out.println("Can not bind to port " + port + ": " + ioe.getMessage());
       }
+   }
+
+   public void addTimerTasks() {
+      auctionTimerTask.add(new AuctionTimerTask("45 seconds left!", 15000));
+     auctionTimerTask.add(new AuctionTimerTask("30 seconds left!", 30000));
+     auctionTimerTask.add(new AuctionTimerTask("20 seconds left!", 40000));
+     auctionTimerTask.add(new AuctionTimerTask("10 seconds left!", 50000));
+     auctionTimerTask.add(new AuctionTimerTask("5 seconds left!", 55000));
+     auctionTimerTask.add(new AuctionTimerTask("4 seconds left!", 56000));
+     auctionTimerTask.add(new AuctionTimerTask("3 seconds left!", 57000));
+     auctionTimerTask.add(new AuctionTimerTask("2 seconds left!", 58000));
+     auctionTimerTask.add(new AuctionTimerTask("1 seconds left!", 59000));
    }
 
    public void addItems() {
@@ -55,70 +62,35 @@ public class ChatServer implements Runnable {
      currentAuctionItem.setPrice(auctionItemList.get(index).getPrice());
    }
 
-   public void run() {
-      while (thread != null) {
-        try{
-          System.out.println("Waiting for a client ...");
-          addThread(server.accept());
-
-          int pause = (int)(Math.random()*3000);
-          Thread.sleep(pause);
-
-        } catch(IOException ioe) {
-          System.out.println("Server accept error: " + ioe);
-          stop();
-        } catch (InterruptedException e){
-          System.out.println(e);
-        }
-      }
-   }
-
-  public void start() {
-		if (thread == null) {
-		  thread = new Thread(this);
-      thread.start();
-    }
-  }
-
-   public void stop() {
-	   thread = null;
-   }
-
-   private int findClient(int ID) {
-	   for (int i = 0; i < clientCount; i++)
-         if (clients[i].getID() == ID)
-            return i;
-     return -1;
-   }
-
    public synchronized void broadcast(int ID, String input) {
-     int clientbid = Integer.decode(input); //we are getting user input and converting into int
+     int clientBid = Integer.decode(input); //convert user input to int
      
      if (input.equals(".bye")) {
         clients[findClient(ID)].send(".bye");
         remove(ID);
      } else {
-         //checking if the bid is bigger than the item price
-        	if (clientbid > currentAuctionItem.getPrice() && clientbid > 0 && clientbid < 1000000000 && itemsCount > 0) {
-              currentAuctionItem.setPrice(clientbid);
-              for(int i=0;i<clientCount; i++)
-              {
-                clients[i].send("\nHighest bid for:  " + currentAuctionItem.getName() + " is: " + currentAuctionItem.getPrice()); //sending info to auctioneers whats the current highest bid
-              }
-              clients[findClient(ID)].send("\nYou have placed a new highest bid of: " + currentAuctionItem.getPrice() + " for: " + currentAuctionItem.getName()); //sends info to the bidder that he got the highest bid
-              for (int i = 0; i < clientCount; i++)
-              {
-                if(clients[i].getID() != ID)
-                  System.out.println(ID + clientbid);
+         //check if the bid is bigger than the item price
+        	if (clientBid > currentAuctionItem.getPrice() && clientBid > 0 && auctionItemList.size() > 0) {
+
+              currentAuctionItem.setPrice(clientBid);
+              for(int i=0;i<clientCount; i++) {
+                clients[i].send("\nAuction item: " + currentAuctionItem.getName() + " | Highest bid: " + currentAuctionItem.getPrice().doubleValue()); //sending info to auctioneers whats the current highest bid
+              clients[findClient(ID)].send("\nYou have placed bid of " + currentAuctionItem.getPrice().doubleValue() + " for " + currentAuctionItem.getName()); //sends info to the bidder that he got the highest bid
+              
+              for (int i = 0; i < clientCount; i++) {
+                if(clients[i].getID() != ID){
+                  System.out.println(ID + clientBid);
+                }
+
                 clientID = ID;// getting the id of the client who placed the bid
               }
               current_client = 1;
               timer.cancel();// reset the timer
               runTimer();//starts the timer again when new bid was placed
             }
-            else if(itemsCount == 0)
+            else if(auctionItemList.size() == 0)
             {
-              clients[findClient(ID)].send("\nNo more bids allowed");
+              clients[findClient(ID)].send("\nNo more items in the auction!");
             }
             else //informs the client that the bid is not valid
             {
@@ -126,28 +98,6 @@ public class ChatServer implements Runnable {
             }
      }
      notifyAll();
-   }
-
-   public synchronized void remove(int ID) {
-	  int pos = findClient(ID);
-    if (pos >= 0) {
-		    ChatServerThread toTerminate = clients[pos];
-        System.out.println("Removing client thread " + ID + " at " + pos);
-
-        if (pos < clientCount-1)
-            for (int i = pos+1; i < clientCount; i++)
-               clients[i-1] = clients[i];
-         clientCount--;
-
-        try{
-          toTerminate.close();
-        } catch(IOException ioe) {
-			    System.out.println("Error closing thread: " + ioe);
-		    }
-        toTerminate = null;
-        System.out.println("Client " + pos + " removed");
-        notifyAll();
-      }
    }
 
    private void addThread(Socket socket) {
@@ -158,7 +108,7 @@ public class ChatServer implements Runnable {
 			      clients[clientCount].open();
             clients[clientCount].start();
             clientCount++;
-            welcome();
+            welcomeMessage();
         } catch(IOException ioe) {
 			      System.out.println("Error opening thread: " + ioe);
 		    }
@@ -167,9 +117,9 @@ public class ChatServer implements Runnable {
       }
    }
 
-	public void welcome() // displays message after user connects to the server
+	public void welcomeMessage() // displays message after user connects to the server
 	{
-		if(clientCount == 2 && itemsCount > 0) // message displayed when 2nd auctioneer join the server and items are currently on sale
+		if(clientCount == 2 && auctionItemList.size() > 0) // message displayed when 2nd auctioneer join the server and items are currently on sale
 		{
 			for(int i=0;i<clientCount; i++)
 			{
@@ -177,21 +127,21 @@ public class ChatServer implements Runnable {
 			}
 			runTimer();//we start the auction
 		}
-		else if(clientCount >=3 && itemsCount > 0)// message displayed when another auctioneers connect to server
+		else if(clientCount >=3 && auctionItemList.size() > 0)// message displayed when another auctioneers connect to server
 		{												// the auction doesn't restarts
 			for(int i=0;i<clientCount; i++)
 			{
 				clients[i].send("\nWelcome to the auction. Current item for sale is:  " +  currentAuctionItem.getName() + " at the price: " + currentAuctionItem.getPrice());
 			}
 		}
-		else if(clientCount == 1 && itemsCount > 0)// waiting for another client to connect to start the auction
+		else if(clientCount == 1 && auctionItemList.size() > 0)// waiting for another client to connect to start the auction
 		{
 			for(int i=0;i<clientCount; i++)
 			{
 				clients[i].send("\nWelcome to the auction. Auction will start when we get another client! Please wait...");
 			}
 		}
-		else if(clientCount >=1 && itemsCount < 1)// when client connects but there is no more items for the auction
+		else if(clientCount >=1 && auctionItemList.size() < 1)// when client connects but there is no more items for the auction
 		{
 			for(int i=0;i<clientCount; i++)
 			{
@@ -213,29 +163,29 @@ public class ChatServer implements Runnable {
 					auctionItemList.remove(INDEX); // item is removed from the list
 					auctionItemList.add(new AuctionItem(currentAuctionItem.getName(), currentAuctionItem.getPrice())); //the dame item is placed at the end of the array list
 					addToAuction(INDEX);//since we removed the 1st item now the 2nd item is the 1st item
-					if (itemsCount == 1) // if there is only one item the auctioneers are notified that it is the last item
+					if (auctionItemList.size() == 1) // if there is only one item the auctioneers are notified that it is the last item
 					{
-						for (int INDEX = 0; INDEX < clientCount; INDEX++)
+						for (int i = 0; i < clientCount; i++)
 						{
-							clients[INDEX].send( " \n----------------------------------------------------------------------");
-							clients[INDEX].send("\nLast item for sale is:  " +  currentAuctionItem.getName() + "  at the price:  " + currentAuctionItem.getPrice());
+							clients[i].send( " \n----------------------------------------------------------------------");
+							clients[i].send("\nLast item for sale is:  " +  currentAuctionItem.getName() + "  at the price:  " + currentAuctionItem.getPrice());
 						}
 						timer.cancel();
 						runTimer();
 					}
-					else if(itemsCount == 0) // in case something goes wrong we don't want to start the auction again
+					else if(auctionItemList.size() == 0) // in case something goes wrong we don't want to start the auction again
 					{
-						for (int INDEX = 0; INDEX < clientCount; INDEX++)
+						for (int i = 0; i < clientCount; i++)
 						{
-							clients[INDEX].send("\n Please come again :)");
+							clients[i].send("\n Please come again :)");
 						}
 					}
 					else //if item wasn't sold we display the name and the price of the next item
 					{
-						for (int INDEX = 0; INDEX < clientCount; INDEX++)
+						for (int i = 0; i < clientCount; i++)
 						{
-							clients[INDEX].send( " \n----------------------------------------------------------------------");
-							clients[INDEX].send("\nNext item for sale is:  " +  currentAuctionItem.getName() + "  at the price:  " + currentAuctionItem.getPrice());
+							clients[i].send( " \n----------------------------------------------------------------------");
+							clients[i].send("\nNext item for sale is:  " +  currentAuctionItem.getName() + "  at the price:  " + currentAuctionItem.getPrice());
 						}
 						timer.cancel();// we cancel the timer and then start it again for 1 minute
 						runTimer();
@@ -243,32 +193,31 @@ public class ChatServer implements Runnable {
 				}
 				else // if bid was placed
 				{
-					if(itemsCount == 2)//notifying auctioneers which item was sold, to who and for how much
+					if(auctionItemList.size() == 2)//notifying auctioneers which item was sold, to who and for how much
 					{
 						Toolkit.getDefaultToolkit().beep();// 3rd beep noise notifying auctioneers that the
-						for (int INDEX = 0; INDEX < clientCount; INDEX++)
+						for (int i = 0; i < clientCount; i++)
 						{
-							clients[INDEX].send( " \n"+  currentAuctionItem.getName() + "  Was sold to " + clientID +" at the price:  " + currentAuctionItem.getPrice());
-							clients[INDEX].send( " \n----------------------------------------------------------------------");
+							clients[i].send( " \n"+  currentAuctionItem.getName() + "  Was sold to " + clientID +" at the price:  " + currentAuctionItem.getPrice());
+							clients[i].send( " \n----------------------------------------------------------------------");
 						}
 						auctionItemList.remove(INDEX);//remove the item from the list
 						addToAuction(INDEX);//adding the last item to the list
-						itemsCount--;//deducting the item count
-						for (int INDEX = 0; INDEX < clientCount; INDEX++)
+
+						for (int i = 0; i < clientCount; i++)
 						{
-							clients[INDEX].send("\nLast item for sale is:  " +  currentAuctionItem.getName() + "  at the price:  " + currentAuctionItem.getPrice()); // notifying auctioneers that last item on sale in this auction
+							clients[i].send("\nLast item for sale is:  " +  currentAuctionItem.getName() + "  at the price:  " + currentAuctionItem.getPrice()); // notifying auctioneers that last item on sale in this auction
 						}
 						timer.cancel();//reset the timer again
 						runTimer();
 					}
-					else if(itemsCount == INDEX)//
+					else if(auctionItemList.size() == INDEX)
 					{
-						itemsCount --;//deducting the item count
 						Toolkit.getDefaultToolkit().beep();
 						for (int i = 0; i < clientCount; i++)
 						{
-							clients[INDEX].send( "\n"+  currentAuctionItem.getName() + "  Was sold to " + clientID +" at the price:  " + currentAuctionItem.getPrice());
-							clients[INDEX].send( " \n----------------------------------------------------------------------");
+							clients[i].send( "\n"+  currentAuctionItem.getName() + "  Was sold to " + clientID +" at the price:  " + currentAuctionItem.getPrice());
+							clients[i].send( " \n----------------------------------------------------------------------");
 						}
 						for (int i = 0; i < clientCount; i++)
 						{
@@ -308,72 +257,24 @@ public class ChatServer implements Runnable {
 			}
 		}, TIMER1);
 
-		timer.schedule(new TimerTask() {
+    for(AuctionTimerTask task: auctionTimerTask) {
+        TimerTask timerTask = new TimerTask() {
+          @Override
+          public void run() {
+            for (int i = 0; i < clientCount; i++) {
+                clients[i].send(task.getText()); //reminding auctioneers how much left do they have to bid
+            }
+            
+            if(current_client == 1) {
+                Toolkit.getDefaultToolkit().beep();
+            }
+          };   
+        };
 
-			@Override
-			public void run()
-			{
-				for (int i = 0; i < clientCount; i++)
-				{
-					clients[i].send("\n30 seconds left for this auction!!!"); //reminding auctioneers how much left do they have to bid
-				}
-				if(current_client == 1) // beeps only when someone placed bid for the item
-				{
-					Toolkit.getDefaultToolkit().beep();
-				}
-			}
-		}, TIMER2);
+        timer.schedule(timerTask, task.getTime());  
+	  }
 
-		timer.schedule(new TimerTask() {
-
-			@Override
-			public void run()
-			{
-				for (int i = 0; i < clientCount; i++)
-				{
-					clients[i].send("\n15 seconds left for this auction!!!"); //reminding auctioneers how much left do they have to bid
-				}
-				if(current_client == 1) // beeps only when someone placed bid for the item
-				{
-					Toolkit.getDefaultToolkit().beep();
-				}
-			}
-		}, TIMER3);
-		timer.schedule(new TimerTask() { //beeping at certain times to get the auction feel
-
-			@Override
-			public void run()
-			{
-				if(current_client == 1)
-				{
-					Toolkit.getDefaultToolkit().beep();
-				}
-			}
-		}, TIMER4);
-
-		timer.schedule(new TimerTask() {
-
-			@Override
-			public void run()
-			{
-				if(current_client == 1)
-				{
-					Toolkit.getDefaultToolkit().beep();
-				}
-			}
-		}, TIMER5);
-
-		timer.schedule(new TimerTask() {
-
-			@Override
-			public void run()
-			{	if(current_client ==1)
-			{
-				Toolkit.getDefaultToolkit().beep();
-			}
-			}
-		}, TIMER6);
-	}
+  }
 
    public static void main(String args[]) {
 	    ChatServer server = null;
@@ -381,6 +282,64 @@ public class ChatServer implements Runnable {
          System.out.println("Usage: java ChatServer port");
       } else {
          server = new ChatServer(Integer.parseInt(args[0]));
+      }
+   }
+
+  public void start() {
+		if (thread == null) {
+		  thread = new Thread(this);
+      thread.start();
+    }
+  }
+
+   public void stop() {
+	   thread = null;
+   }
+
+   private int findClient(int ID) {
+	   for (int i = 0; i < clientCount; i++)
+         if (clients[i].getID() == ID)
+            return i;
+     return -1;
+   }
+
+   public void run() {
+      while (thread != null) {
+        try{
+          System.out.println("Waiting for a client ...");
+          addThread(server.accept());
+
+          int pause = (int)(Math.random()*3000);
+          Thread.sleep(pause);
+
+        } catch(IOException ioe) {
+          System.out.println("Server accept error: " + ioe);
+          stop();
+        } catch (InterruptedException e){
+          System.out.println(e);
+        }
+      }
+   }
+
+  public synchronized void remove(int ID) {
+	  int pos = findClient(ID);
+    if (pos >= 0) {
+		    ChatServerThread toTerminate = clients[pos];
+        System.out.println("Removing client thread " + ID + " at " + pos);
+
+        if (pos < clientCount-1)
+            for (int i = pos+1; i < clientCount; i++)
+               clients[i-1] = clients[i];
+         clientCount--;
+
+        try{
+          toTerminate.close();
+        } catch(IOException ioe) {
+			    System.out.println("Error closing thread: " + ioe);
+		    }
+        toTerminate = null;
+        System.out.println("Client " + pos + " removed");
+        notifyAll();
       }
    }
 }
