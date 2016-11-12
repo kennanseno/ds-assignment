@@ -52,6 +52,7 @@ public class AuctionServer implements Runnable {
     //add  items on auction list
     auctionItemList.add(new AuctionItem("Iphone 7", 50));
     auctionItemList.add(new AuctionItem("Xbox One", 220));
+    auctionItemList.add(new AuctionItem("Television", 220));
    }
    public void addToAuction(int index) {
      currentAuctionItem = new AuctionItem(auctionItemList.get(index).getName(), auctionItemList.get(index).getPrice());
@@ -107,17 +108,23 @@ public class AuctionServer implements Runnable {
           System.out.println("Client refused: maximum " + clients.length + " reached.");
       }
    }
-
-	public void welcomeMessage() { // displays message when a bidder joins
+  
+  /**
+  *   Function that is displayed to a client when he joins the auction
+  */
+	public void welcomeMessage() {
 		if(clientCount > 1 && auctionItemList.size() >= 1) { // message displayed when there is enough bidder in the auction
       sendMessageToBidders(clientCount, "\nWELCOME! Current item is " +  currentAuctionItem.getName() + " at " + currentAuctionItem.getPrice());
 			runAuction(); // start auction
-		} else if(clientCount == 1 && auctionItemList.size() >= 1) { // wait for another client to connect to start the auction
+		} else if(clientCount == 1 && auctionItemList.size() >= 1) { // if only 1 bidder, wait..
       sendMessageToBidders(clientCount, "\nWELCOME! Waiting for 1 more bidder. Please wait...");
 		}
 	}
 
-  private void runAuction() { // auction logic
+  /**
+  * Function that runs that whole auction
+  */
+  private void runAuction() {
 		timer = new Timer("Countdown");
 		timer.schedule(new TimerTask() {
 
@@ -125,7 +132,7 @@ public class AuctionServer implements Runnable {
 			public void run() {
 				if(currentClient == 0) { // if no one placed a bid
 
-            // place item at the end of arraylist
+            // place item at the end of auction list to be auctioned again
             auctionItemList.remove(0); 
             auctionItemList.add(new AuctionItem(currentAuctionItem.getName(), currentAuctionItem.getPrice()));
             addToAuction(0);
@@ -140,7 +147,17 @@ public class AuctionServer implements Runnable {
               runAuction();
             } 
 				} else {  // if a bid is placed
-            if(auctionItemList.size() > 1) { //broadcast winning bidder and run auction again with another item 
+            if(auctionItemList.size() > 2) { //broadcast winning bidder and run auction again with another item 
+              Toolkit.getDefaultToolkit().beep();    
+              sendMessageToBidders(clientCount, "\n_____________________________________________________________________________");
+              sendMessageToBidders(clientCount, "\nNext item in auction is " +  currentAuctionItem.getName() + " with bid starting at " + currentAuctionItem.getPrice());
+              
+              auctionItemList.remove(0);
+              addToAuction(0);
+              
+              sendMessageToBidders(clientCount, "\nNext item for sale is:  " +  currentAuctionItem.getName() + "  at the price:  " + currentAuctionItem.getPrice());
+              runAuction();
+            } else if(auctionItemList.size() == 2) { //broadcast winning bidder and run auction again with another item 
               Toolkit.getDefaultToolkit().beep();    
               sendMessageToBidders(clientCount, "\n_____________________________________________________________________________");
               sendMessageToBidders(clientCount, "\nLast item in auction is " +  currentAuctionItem.getName() + " with bid starting at " + currentAuctionItem.getPrice());
