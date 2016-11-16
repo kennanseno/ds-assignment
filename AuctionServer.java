@@ -183,7 +183,7 @@ public class AuctionServer implements Runnable {
 		}, AUCTION_TIME);
 
     // add auctiontimerTasks
-    for(AuctionTimerTask task: auctionTimerTask) {
+    for(final AuctionTimerTask task: auctionTimerTask) {
         TimerTask timerTask = new TimerTask() {
           @Override
           public void run() {
